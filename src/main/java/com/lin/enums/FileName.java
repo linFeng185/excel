@@ -9,7 +9,8 @@ public enum  FileName {
     /**
      * 文件名和标题的枚举类
      */
-    TEST("test","测试标题","data"),
+    TEST("test","测试标题","data")
+    ,ERROR("错误数据","错误数据，请修改后再作提交","data")
     ;
 
     private final String fileName;

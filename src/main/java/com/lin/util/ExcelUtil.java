@@ -98,8 +98,8 @@ public class ExcelUtil <T>{
 
     /**
      * 导出excel
-     * @param dataList
-     * @param fileEnum
+     * @param dataList 数据集
+     * @param fileEnum 文件的枚举类
      * @throws IllegalAccessException
      */
     public void export(List<T> dataList, FileName fileEnum) throws IllegalAccessException {
@@ -108,10 +108,10 @@ public class ExcelUtil <T>{
 
     /**
      * 导出excel
-     * @param request
-     * @param response
-     * @param dataList
-     * @param fileEnum
+     * @param request 请求对象
+     * @param response 响应对象
+     * @param dataList 数据集
+     * @param fileEnum 文件的枚举类
      * @throws IllegalAccessException
      */
     public void export(HttpServletRequest request,HttpServletResponse response, List<T> dataList,FileName fileEnum) throws IllegalAccessException {
@@ -227,14 +227,29 @@ public class ExcelUtil <T>{
                 }
                 fieldMap.put(headMap.get(excel.name()),new Object[]{field,excel});
             }
+            //存储不符合条件的数据
+            List<T> responseData = new ArrayList<>();
             for (int i=rowBeginIndex;i<rowNum;i++){
                 Row row=sheet.getRow(i);
                 T t=clazz.getDeclaredConstructor().newInstance();
+                //是否是异常数据
+                boolean isErrorData = false;
                 for (Map.Entry<Integer,Object[]>entry:fieldMap.entrySet()){
                     Cell cell=row.getCell(entry.getKey());
-                    setEntityFieldValue(t,cell,(Field) entry.getValue()[0],(Excel) entry.getValue()[1]);
+                    if(!setEntityFieldValue(t,cell,(Field) entry.getValue()[0],(Excel) entry.getValue()[1])){
+                        isErrorData = true;
+                    }
+                }
+                //如果有不符合条件的数据，就往集合中添加数据
+                if(isErrorData){
+                    responseData.add(t);
                 }
                 res.add(t);
+            }
+            //如果集合有数据
+            if(!responseData.isEmpty()){
+                //将不符合规范的数据，导出给客户再作修改
+                export(responseData,FileName.ERROR);
             }
         } catch (IOException | InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
             e.printStackTrace();
@@ -434,10 +449,10 @@ public class ExcelUtil <T>{
      * @param cell
      * @param field
      */
-    private void setEntityFieldValue(T t, Cell cell, Field field,Excel excel) {
+    private boolean setEntityFieldValue(T t, Cell cell, Field field,Excel excel) {
         Object value=getCellValue(cell,field);
-        //是否判空
-        if(excel.isBlank()){
+        //是否判空，简易版
+        /*if(excel.isBlank()){
             int rowNum = cell.getRow().getRowNum()+1;
             if(value == null){
                 throw new NullPointerException("第"+rowNum+"行的"+excel.name()+"不能为空!");
@@ -445,8 +460,17 @@ public class ExcelUtil <T>{
             if(value instanceof String && StringUtils.isBlank((String)value)){
                 throw new NullPointerException("第"+rowNum+"行的"+"不能为空!");
             }
+        }*/
+        if(excel.isBlank()){
+            if(value == null){
+                return false;
+            }
+            if(value instanceof String && StringUtils.isBlank((String)value)){
+                return false;
+            }
         }
         ReflectUtils.invokeSetter(t,field.getName(),value);
+        return true;
     }
 
     /**
