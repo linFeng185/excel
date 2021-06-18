@@ -14,7 +14,7 @@ public class ImportEntity {
     /**
      * 名称
      */
-    @Excel(name = "名字")
+    @Excel(name = "名字",isBlank = true)
     private String name;
 
     /**

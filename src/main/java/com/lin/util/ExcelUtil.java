@@ -3,6 +3,7 @@ package com.lin.util;
 import com.lin.annotation.Excel;
 import com.lin.enums.ExcelType;
 import com.lin.enums.FileName;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
@@ -15,6 +16,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.math.BigDecimal;
 import java.net.URLEncoder;
 import java.text.DecimalFormat;
@@ -212,7 +214,7 @@ public class ExcelUtil <T>{
                 headMap.put(String.valueOf(headCell.getStringCellValue()),i);
             }
             Field [] fields=clazz.getDeclaredFields();
-            Map<Integer,Field>fieldMap=new HashMap<>(headCellNum);
+            Map<Integer,Object[]>fieldMap=new HashMap<>(headCellNum);
             for (Field field:fields) {
                 Excel excel=field.getAnnotation(Excel.class);
                 if(excel.excelType()==ExcelType.IS_EXPORT){
@@ -223,18 +225,18 @@ public class ExcelUtil <T>{
                 if (!headMap.containsKey(excel.name())){
                     continue;
                 }
-                fieldMap.put(headMap.get(excel.name()),field);
+                fieldMap.put(headMap.get(excel.name()),new Object[]{field,excel});
             }
             for (int i=rowBeginIndex;i<rowNum;i++){
                 Row row=sheet.getRow(i);
-                T t=clazz.newInstance();
-                for (Map.Entry<Integer,Field>entry:fieldMap.entrySet()){
+                T t=clazz.getDeclaredConstructor().newInstance();
+                for (Map.Entry<Integer,Object[]>entry:fieldMap.entrySet()){
                     Cell cell=row.getCell(entry.getKey());
-                    setEntityFieldValue(t,cell,entry.getValue());
+                    setEntityFieldValue(t,cell,(Field) entry.getValue()[0],(Excel) entry.getValue()[1]);
                 }
                 res.add(t);
             }
-        } catch (IOException  | InstantiationException | IllegalAccessException e) {
+        } catch (IOException | InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
             e.printStackTrace();
         }
         return res;
@@ -432,8 +434,18 @@ public class ExcelUtil <T>{
      * @param cell
      * @param field
      */
-    private void setEntityFieldValue(T t, Cell cell, Field field) {
+    private void setEntityFieldValue(T t, Cell cell, Field field,Excel excel) {
         Object value=getCellValue(cell,field);
+        //是否判空
+        if(excel.isBlank()){
+            int rowNum = cell.getRow().getRowNum()+1;
+            if(value == null){
+                throw new NullPointerException("第"+rowNum+"行的"+excel.name()+"不能为空!");
+            }
+            if(value instanceof String && StringUtils.isBlank((String)value)){
+                throw new NullPointerException("第"+rowNum+"行的"+"不能为空!");
+            }
+        }
         ReflectUtils.invokeSetter(t,field.getName(),value);
     }
 
