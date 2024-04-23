@@ -1,18 +1,23 @@
 package com.lin;
 
-import com.lin.enums.FileName;
+import com.alibaba.fastjson.JSON;
+import com.lin.enums.FileNameEnum;
 import com.lin.export.Entity;
 import com.lin.imports.ImportEntity;
-import com.lin.util.ExcelUtil;
+import com.lin.util.ExcelExport;
+import com.lin.util.ExcelUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * @Author: lin
@@ -27,9 +32,9 @@ public class Main {
      */
     @GetMapping("/export")
     public String export() throws IllegalAccessException {
-        ExcelUtil<Entity> util=new ExcelUtil<>(Entity.class);
+        ExcelExport<Entity> util=new ExcelExport<>(Entity.class);
         List<Entity> data=new ArrayList<>();
-        for (int i=0;i<1000000;i++){
+        for (int i=0;i<10;i++){
             Entity entity=new Entity();
             entity.setAge(i);
             entity.setBirthday(LocalDate.now());
@@ -40,7 +45,7 @@ public class Main {
             data.add(entity);
         }
         System.out.println(LocalDateTime.now());
-        util.export(data, FileName.TEST);
+        util.export(data, FileNameEnum.TEST);
         System.out.println(LocalDateTime.now());
         return "SUCCESS";
     }
@@ -52,9 +57,16 @@ public class Main {
      */
     @PostMapping("/importData")
     public String importData(MultipartFile file){
-        ExcelUtil<ImportEntity> util=new ExcelUtil<>(ImportEntity.class);
-        List<ImportEntity> res=util.importExcel(file);
-        System.out.println(res);
-        return "SUCCESS";
+        List<ImportEntity> res = ExcelUtils.importExcel(file,ImportEntity.class);
+        Map<String,Object> resMap = new HashMap<>(3);
+        resMap.put("code",200);
+        resMap.put("msg","操作成功");
+        resMap.put("data",res);
+        return JSON.toJSONString(resMap);
+    }
+
+    @PostMapping("/importList")
+    public String importList(@RequestBody List<ImportEntity> ss){
+        return JSON.toJSONString(ss);
     }
 }

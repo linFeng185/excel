@@ -1,10 +1,11 @@
 package com.lin.enums;
 
 /**
+ * 文件名枚举
  * @Author: lin
  * @Date: 2021/2/18 15:29
  */
-public enum  FileName {
+public enum FileNameEnum {
 
     /**
      * 文件名和标题的枚举类
@@ -19,7 +20,7 @@ public enum  FileName {
 
     private final String sheetName;
 
-    FileName(String fileName,String titleValue,String sheetName){
+    FileNameEnum(String fileName, String titleValue, String sheetName){
         this.fileName=fileName;
         this.titleValue=titleValue;
         this.sheetName=sheetName;

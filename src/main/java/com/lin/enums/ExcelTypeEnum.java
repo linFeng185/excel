@@ -4,7 +4,7 @@ package com.lin.enums;
  * @Author: lin
  * @Date: 2021/1/29 17:33
  */
-public enum  ExcelType {
+public enum ExcelTypeEnum {
 
     /**
      * 类型：0导出，1导入，2导入导出
@@ -15,7 +15,7 @@ public enum  ExcelType {
 
     private final int val;
 
-    ExcelType(int val){
+    ExcelTypeEnum(int val){
         this.val=val;
     }
 

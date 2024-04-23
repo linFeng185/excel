@@ -1,5 +1,7 @@
 package com.lin.util;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -91,5 +93,14 @@ public class DateUtil {
 
     public static LocalDateTime strToLocalDateTime(String date,String format){
         return LocalDateTime.parse(date,DateTimeFormatter.ofPattern(format));
+    }
+
+    public static Date strToDate(String date,String format) {
+        SimpleDateFormat dateFormat = new SimpleDateFormat(format);
+        try {
+            return dateFormat.parse(date);
+        } catch (ParseException e) {
+            return null;
+        }
     }
 }

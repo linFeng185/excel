@@ -1,6 +1,6 @@
 package com.lin.annotation;
 
-import com.lin.enums.ExcelType;
+import com.lin.enums.ExcelTypeEnum;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -25,13 +25,7 @@ public @interface Excel {
     /**
      * 日期格式
      */
-    String dateFormat() default "";
-
-    /**
-     * 日期时间格式，用的jdk8的时间类，感觉两个格式字段有些多余了，但是Date类型操作起来没有LocalDate方便，先试试，不行就换
-     * @return
-     */
-    String dateTimeFormat() default "";
+    String pattern() default "";
 
     /**
      * 列高
@@ -51,7 +45,7 @@ public @interface Excel {
     /**
      * 类型：IS_EXPORT导入，IS_IMPORT导出，ALL导入导出
      */
-    ExcelType excelType() default ExcelType.ALL;
+    ExcelTypeEnum excelType() default ExcelTypeEnum.ALL;
 
     /**
      * 是否可选字段，如果为true时，会根据请求参数来判断该字段是否显示
@@ -86,5 +80,49 @@ public @interface Excel {
     /**
      * 是否需要判空
      */
-    boolean isBlank() default false;
+    boolean isNotBlank() default false;
+
+    /**
+     * 是否需要判断数据长度，大于0则判断
+     * @return
+     */
+    int length() default 0;
+
+    /**
+     * 最小数值
+     * @return
+     */
+    long minNumber() default 1;
+
+    /**
+     * 最大数值
+     * @return
+     */
+    long maxNumber() default -1;
+
+    /**
+     * 小数位数，大于-1时则开启校验
+     * @return
+     */
+    int scale() default -1;
+
+    /**
+     * 正则表达式
+     * @return
+     */
+    String regularExpression() default "";
+
+    /**
+     * 是否唯一
+     * @return
+     */
+    boolean isUnique() default false;
+
+    /**
+     * 组合索引，唯一校验，需要isUnique为true执行。
+     * 如果未设置的话就默认用当前字段做唯一校验。
+     * 必须写在最后一个索引字段做
+     * @return
+     */
+    String [] compositeIndex() default {};
 }
