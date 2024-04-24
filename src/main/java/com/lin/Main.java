@@ -58,6 +58,7 @@ public class Main {
     @PostMapping("/importData")
     public String importData(MultipartFile file){
         List<ImportEntity> res = ExcelUtils.importExcel(file,ImportEntity.class);
+        ExcelUtils.checkData(res,ImportEntity.class);
         Map<String,Object> resMap = new HashMap<>(3);
         resMap.put("code",200);
         resMap.put("msg","操作成功");

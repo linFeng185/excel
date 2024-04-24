@@ -29,7 +29,7 @@ public class ExcelImport<T extends CheckInterface> extends ExcelSuper<T> {
     /**
      * 字段描述行下标
      */
-    protected final static int FIELD_ROW_INDEX = 1;
+    public final static int FIELD_ROW_INDEX = 1;
 
     /**
      * 字段与注解的map
@@ -63,9 +63,28 @@ public class ExcelImport<T extends CheckInterface> extends ExcelSuper<T> {
     Map<String,Map<String,String>> valueConvertMap = new HashMap<>();
 
     /**
+     * 值转换map（用于二次导入）
+     */
+    Map<String,Map<String,String>> reversalValueConvertMap = new HashMap<>();
+
+    /**
      * 唯一索引值map
      */
     Map<Excel,Map<String,String>> uniqueValueMap = new HashMap<>();
+
+    /**
+     * 导入模板字段标题索引map
+     */
+    Map<String,Integer> headMap = new HashMap<>();
+
+    public List<Object[]> getFieldInfoList() {
+        return fieldInfoList;
+    }
+
+    /**
+     * 字段信息list，下标为0的是Field对象，1是字段的Excel对象
+     */
+    List<Object[]> fieldInfoList = new ArrayList<>();
 
     public ExcelImport(Class<T> clazz) {
         super(clazz);
@@ -91,57 +110,73 @@ public class ExcelImport<T extends CheckInterface> extends ExcelSuper<T> {
      * @param sheetIndex 工作表下标
      * @throws IOException 异常
      */
-    protected void importExcelInit(InputStream inputStream, int rowBeginIndex, int sheetIndex) throws IOException {
-        {
-            wb= WorkbookFactory.create(inputStream);
-            sheet=wb.getSheetAt(sheetIndex);
-            rowNum = sheet.getPhysicalNumberOfRows();
-            if(rowNum<=rowBeginIndex){
-                throw new NullPointerException("数据不能为空");
+    public void importExcelInit(InputStream inputStream, int rowBeginIndex, int sheetIndex) throws IOException {
+        excelFileInit(inputStream,rowBeginIndex,sheetIndex);
+        fieldInfoInit();
+    }
+
+    /**
+     * 字段信息初始化
+     */
+    public void fieldInfoInit(){
+        Field[] fields=clazz.getDeclaredFields();
+        fieldMap = new HashMap<>();
+        Map<String, Excel> excelMap = new HashMap<>();
+        for (Field field:fields) {
+            Excel excel = field.getAnnotation(Excel.class);
+            if(excel == null){
+                continue;
             }
-            //获取字段标题的一行数据
-            Row headRow=sheet.getRow(FIELD_ROW_INDEX);
-            int headCellNum=headRow.getPhysicalNumberOfCells();
-            Map<String,Integer> headMap=new HashMap<>(headCellNum);
-            //循环单元格，并取出字段名
-            for (int i=0;i<headCellNum;i++){
-                Cell headCell=headRow.getCell(i);
-                headMap.put(String.valueOf(headCell.getStringCellValue()),i);
+            fieldInfoList.add(new Object[]{field,excel});
+            excelMap.put(excel.name(),excel);
+            if(excel.excelType() == ExcelTypeEnum.IS_EXPORT){
+                continue;
             }
-            Field[] fields=clazz.getDeclaredFields();
-            fieldMap = new HashMap<>(headCellNum);
-            Map<String, Excel> excelMap = new HashMap<>();
-            for (Field field:fields) {
-                Excel excel = field.getAnnotation(Excel.class);
-                if(excel == null){
-                    continue;
-                }
-                excelMap.put(excel.name(),excel);
-                if(excel.excelType() == ExcelTypeEnum.IS_EXPORT){
-                    continue;
-                }
-                if(!"".equals(excel.valueConvert())){
-                    valueConvertMap.put(excel.name(),getKeyMap(excel));
-                }
-                if(excel.isUnique()){
-                    uniqueValueMap.put(excel,new HashMap<>());
-                }
-                if(excel.compositeIndex().length > 0){
-                    Map<Excel,String> compositeIndexMap = new HashMap<>();
-                    for (String name : excel.compositeIndex()) {
-                        compositeIndexMap.put(excelMap.get(name),"");
-                    }
-                    compositeIndexMaps.put(Arrays.toString(excel.compositeIndex()),compositeIndexMap);
-                    compositeIndexKeyCache.put(Arrays.toString(excel.compositeIndex()),new StringBuilder());
-                    compositeIndexVauleMap.put(Arrays.toString(excel.compositeIndex()),new HashMap<>());
-                }
-                //设置私有属性可以访问
-                field.setAccessible(true);
-                if (!headMap.containsKey(excel.name())){
-                    continue;
-                }
-                fieldMap.put(headMap.get(excel.name()),new Object[]{field,excel});
+            if(!"".equals(excel.valueConvert())){
+                valueConvertMap.put(excel.name(),getKeyMap(excel));
             }
+            if(excel.isUnique()){
+                uniqueValueMap.put(excel,new HashMap<>());
+            }
+            if(excel.compositeIndex().length > 0){
+                Map<Excel,String> compositeIndexMap = new HashMap<>();
+                for (String name : excel.compositeIndex()) {
+                    compositeIndexMap.put(excelMap.get(name),"");
+                }
+                compositeIndexMaps.put(Arrays.toString(excel.compositeIndex()),compositeIndexMap);
+                compositeIndexKeyCache.put(Arrays.toString(excel.compositeIndex()),new StringBuilder());
+                compositeIndexVauleMap.put(Arrays.toString(excel.compositeIndex()),new HashMap<>());
+            }
+            //设置私有属性可以访问
+            field.setAccessible(true);
+            if (!headMap.containsKey(excel.name())){
+                continue;
+            }
+            fieldMap.put(headMap.get(excel.name()),new Object[]{field,excel});
+        }
+    }
+
+    /**
+     * 对excel文件的初始化
+     * @param inputStream 输入流
+     * @param rowBeginIndex 开始行
+     * @param sheetIndex 工作表下标
+     * @throws IOException 异常
+     */
+    public void excelFileInit(InputStream inputStream, int rowBeginIndex, int sheetIndex) throws IOException {
+        wb = WorkbookFactory.create(inputStream);
+        sheet = wb.getSheetAt(sheetIndex);
+        rowNum = sheet.getPhysicalNumberOfRows();
+        if(rowNum<=rowBeginIndex){
+            throw new NullPointerException("数据不能为空");
+        }
+        //获取字段标题的一行数据
+        Row headRow = sheet.getRow(FIELD_ROW_INDEX);
+        int headCellNum = headRow.getPhysicalNumberOfCells();
+        //循环单元格，并取出字段名
+        for (int i=0;i<headCellNum;i++){
+            Cell headCell=headRow.getCell(i);
+            headMap.put(String.valueOf(headCell.getStringCellValue()),i);
         }
     }
 
@@ -176,7 +211,7 @@ public class ExcelImport<T extends CheckInterface> extends ExcelSuper<T> {
                     }
                 }
                 //检查单元格值
-                cellValue = checkValue(cellValue,sb,excel,cell != null?String.valueOf(cell.getRowIndex()):"未知");
+                cellValue = checkValue(cellValue,true,sb,excel,cell != null?String.valueOf(cell.getRowIndex()):"未知");
                 //设置字段值
                 ReflectUtils.invokeSetter(t,field.getName(),cellValueConvert(field.getType(), excel, cellValue));
             }
@@ -198,7 +233,7 @@ public class ExcelImport<T extends CheckInterface> extends ExcelSuper<T> {
      * @param cell 单元格对象
      * @return 单元格内容
      */
-    protected String getCellValue(Cell cell) {
+    public String getCellValue(Cell cell) {
         String res;
         if(cell == null){
             return null;
@@ -226,15 +261,17 @@ public class ExcelImport<T extends CheckInterface> extends ExcelSuper<T> {
      * 检查值
      *
      * @param value    单元格值
-     * @param memo     描述
+     * @param isCellValue 是否单元格值
+     * @param msg     描述
      * @param excel    当前字段的注解信息
      * @param rowIndex 数据所在行下标
      * @return 单元格内容（去除两边空格）
      */
-    public String checkValue(String value, StringBuilder memo, Excel excel, String rowIndex) {
+    public String checkValue(String value,boolean isCellValue, StringBuilder msg, Excel excel, String rowIndex) {
         String uniqueKey = null;
         String compositeIndex = null;
         Map<String,String> valueConvertMap = this.valueConvertMap.get(excel.name());
+        Map<String, String> reversalValueConvertMap = this.reversalValueConvertMap.get(excel.name());
         Map<String,String> uniqueValueMap = this.uniqueValueMap.get(excel);
         Map<String,String> compositeIndexValueMap = this.compositeIndexVauleMap.get(Arrays.toString(excel.compositeIndex()));
         StringBuilder compositeIndexValueCache = this.compositeIndexKeyCache.get(Arrays.toString(excel.compositeIndex()));
@@ -248,7 +285,7 @@ public class ExcelImport<T extends CheckInterface> extends ExcelSuper<T> {
         if(uniqueKey != null){
             String dataIndex = uniqueValueMap.get(uniqueKey);
             if (dataIndex != null) {
-                memo.append("、").append(excel.name()).append("在第").append(dataIndex).append("行已存在");
+                msg.append("、").append(excel.name()).append("在第").append(dataIndex).append("行已存在");
             }else{
                 uniqueValueMap.put(uniqueKey,rowIndex);
             }
@@ -256,7 +293,7 @@ public class ExcelImport<T extends CheckInterface> extends ExcelSuper<T> {
         if(compositeIndex != null){
             String dataIndex = compositeIndexValueMap.get(compositeIndex);
             if(dataIndex != null){
-                memo.append("、").append(ArrayUtils.toString(excel.compositeIndex())).append("在第").append(dataIndex).append("行已存在，").append("该校验为字段组合形成唯一值进行校验");
+                msg.append("、").append(ArrayUtils.toString(excel.compositeIndex())).append("在第").append(dataIndex).append("行已存在，").append("该校验为字段组合形成唯一值进行校验");
             }else{
                 compositeIndexValueMap.put(compositeIndex,rowIndex);
             }
@@ -264,8 +301,8 @@ public class ExcelImport<T extends CheckInterface> extends ExcelSuper<T> {
         }
         if(StringUtils.isBlank(value)){
             if(excel.isNotBlank()){
-                memo.append("、");
-                memo.append(excel.name()).append("不能为空");
+                msg.append("、");
+                msg.append(excel.name()).append("不能为空");
             }
             return null;
         }
@@ -275,30 +312,36 @@ public class ExcelImport<T extends CheckInterface> extends ExcelSuper<T> {
             Pattern pattern = Pattern.compile(excel.regularExpression());
             Matcher matcher = pattern.matcher(value);
             if(!matcher.find()){
-                memo.append("、").append(excel.name()).append("不符合校验规则");
+                msg.append("、").append(excel.name()).append("不符合校验规则");
             }
         }
         //如果数值不在范围内
         if(CalculateUtil.greaterThan(excel.maxNumber(),excel.minNumber()) && !CalculateUtil.between(value,excel.minNumber(),excel.maxNumber())){
-            memo.append("、");
-            memo.append(excel.name()).append("超过取值范围：").append(excel.minNumber()).append("-").append(excel.maxNumber());
+            msg.append("、");
+            msg.append(excel.name()).append("超过取值范围：").append(excel.minNumber()).append("-").append(excel.maxNumber());
         }
         //如果长度不符合
         if(excel.length() > 0 && value.length() > excel.length()){
-            memo.append("、");
-            memo.append(excel.name()).append("长度不能超过").append(excel.length());
+            msg.append("、");
+            msg.append(excel.name()).append("长度不能超过").append(excel.length());
         }
         //小数位数不符合
         if(excel.scale() > 0 && new BigDecimal(value).scale() > excel.scale()){
-            memo.append("、");
-            memo.append(excel.name()).append("小数位数不能超过").append(excel.scale());
+            msg.append("、");
+            msg.append(excel.name()).append("小数位数不能超过").append(excel.scale());
         }
         //判断是否枚举类型以及值是否合法
         if(!"".equals(excel.valueConvert())){
-            if(!valueConvertMap.containsKey(value)){
-                memo.append("、").append(excel.name()).append("没有").append(value).append("类型");
+            if(isCellValue){
+                if(!valueConvertMap.containsKey(value)){
+                    msg.append("、").append(excel.name()).append("没有").append(value).append("类型");
+                    value = valueConvertMap.get(value);
+                }
+            }else{
+                if(!reversalValueConvertMap.containsKey(value)){
+                    msg.append("、").append(excel.name()).append("没有").append(value).append("类型");
+                }
             }
-            value = valueConvertMap.get(value);
         }
         return value;
     }
@@ -311,7 +354,7 @@ public class ExcelImport<T extends CheckInterface> extends ExcelSuper<T> {
      * @param cellValue 单元格内容
      * @return 转换后的字段值
      */
-    protected Object cellValueConvert(Class<?> fieldType, Excel excel, String cellValue) {
+    public Object cellValueConvert(Class<?> fieldType, Excel excel, String cellValue) {
         Object value;
         if(cellValue == null){
             return null;

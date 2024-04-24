@@ -1,5 +1,6 @@
 package com.lin.util;
 
+import com.lin.annotation.Excel;
 import com.lin.enums.FileNameEnum;
 import com.lin.imports.CheckInterface;
 import org.springframework.web.multipart.MultipartFile;
@@ -8,9 +9,9 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 /**
  * excel导入导出工具类
@@ -89,5 +90,33 @@ public class ExcelUtils {
         } catch (IllegalAccessException e) {
             e.printStackTrace();
         }
+    }
+
+    /**
+     * 校验数据
+     * @param data
+     * @param clazz
+     * @param <T>
+     */
+    public static<T extends CheckInterface> boolean checkData(List<T> data,Class<T> clazz){
+        ExcelImport<T> excelImport = new ExcelImport<>(clazz);
+        excelImport.fieldInfoInit();
+        List<Object[]> fieldInfoList = excelImport.getFieldInfoList();
+        boolean res = false;
+        for (int i = 0; i < data.size(); i++) {
+            T obj = data.get(i);
+            StringBuilder sb = new StringBuilder();
+            for (Object[] objArr : fieldInfoList) {
+                Object val = ReflectUtils.invokeGetter(obj, ((Field) objArr[0]).getName());
+                Excel excel = (Excel) objArr[1];
+                excelImport.checkValue(val != null ? val.toString() : null,false,sb,excel,String.valueOf(i + 1));
+            }
+            if(sb.length() > 0){
+                res = true;
+                obj.setMsg(sb.deleteCharAt(0).toString());
+            }
+            obj.check();
+        }
+        return res;
     }
 }
