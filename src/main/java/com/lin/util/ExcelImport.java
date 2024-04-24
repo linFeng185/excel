@@ -211,7 +211,7 @@ public class ExcelImport<T extends CheckInterface> extends ExcelSuper<T> {
                     }
                 }
                 //检查单元格值
-                cellValue = checkValue(cellValue,true,sb,excel,cell != null?String.valueOf(cell.getRowIndex()):"未知");
+                cellValue = checkValue(cellValue,true,sb,excel,cell != null?String.valueOf(cell.getRowIndex() + 1):"未知");
                 //设置字段值
                 ReflectUtils.invokeSetter(t,field.getName(),cellValueConvert(field.getType(), excel, cellValue));
             }
