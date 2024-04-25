@@ -240,7 +240,7 @@ public class ExcelImport<T extends CheckInterface> extends ExcelSuper<T> {
         }
         CellType cellType = cell.getCellType();
         if(cellType==CellType.NUMERIC){
-            res = String.valueOf(cell.getNumericCellValue());
+            res = new BigDecimal(String.valueOf(cell.getNumericCellValue())).stripTrailingZeros().toPlainString();
         }else if(cellType==CellType.STRING){
             res = cell.getStringCellValue();
         }else if(cellType==CellType.FORMULA){
@@ -333,9 +333,10 @@ public class ExcelImport<T extends CheckInterface> extends ExcelSuper<T> {
         //判断是否枚举类型以及值是否合法
         if(!"".equals(excel.valueConvert())){
             if(isCellValue){
-                if(!valueConvertMap.containsKey(value)){
-                    msg.append("、").append(excel.name()).append("没有").append(value).append("类型");
+                if(valueConvertMap.containsKey(value)){
                     value = valueConvertMap.get(value);
+                }else{
+                    msg.append("、").append(excel.name()).append("没有").append(value).append("类型");
                 }
             }else{
                 if(!reversalValueConvertMap.containsKey(value)){
@@ -368,11 +369,11 @@ public class ExcelImport<T extends CheckInterface> extends ExcelSuper<T> {
         } else if (BigDecimal.class==fieldType) {
             value = new BigDecimal(cellValue);
         } else if(Integer.class==fieldType){
-            value =  new BigDecimal(cellValue).intValue();
+            value =  Integer.valueOf(cellValue);
         }else if(Long.class==fieldType){
-            value =  new BigDecimal(cellValue).longValue();
+            value =  Long.valueOf(cellValue);
         }else if(Short.class==fieldType){
-            value =  new BigDecimal(cellValue).shortValue();
+            value =  Short.valueOf(cellValue);
         }else if(LocalDate.class==fieldType){
             value = DateUtil.strToLocalDate(cellValue,excel.pattern());
         }else if(LocalDateTime.class==fieldType){
